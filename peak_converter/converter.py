@@ -58,6 +58,11 @@ def main(*args) -> None:
         dest="encoding",
         default="cp850",
     )
+    parser.add_argument(
+        "/version",
+        action="version",
+        version=converter_version(),
+    )
 
     if not args:
         args = None

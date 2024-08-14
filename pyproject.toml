@@ -26,7 +26,6 @@ pytest-random-order = "^1.1.1"
 
 [tool.poetry.scripts]
 peak-converter = "peak_converter.converter:main"
-peak-version = "peak_converter.version:main"
 
 [[tool.poetry.source]]
 name = "PyPI"
