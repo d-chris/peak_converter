@@ -27,7 +27,7 @@ def converter_version(encoding: str = "cp850") -> str:
     )
 
     try:
-        return match.group("version")
+        return f'v{match.group("version")}'
     except AttributeError:
         pass
 

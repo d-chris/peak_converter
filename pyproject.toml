@@ -9,7 +9,7 @@ version = "0.0.0"
 description = "python wrapper for peak-converter"
 authors = [ "Christoph Dörrer <d-chris@web.de>" ]
 readme = "README.md"
-include = [ "LICENSE", "bin/*" ]
+include = [ "bin/*" ]
 
 [tool.poetry.dependencies]
 python = "^3.9"
