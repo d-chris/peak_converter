@@ -18,9 +18,16 @@ def test_peak_converter(strict):
     assert isinstance(peak_executable(strict), pathlib.Path)
 
 
-def test_main():
+def test_main_silent():
 
     assert main("--help", "/silent") == 32
+
+
+def test_main(capsys):
+
+    assert main("--help") == 32
+
+    _ = capsys.readouterr()
 
 
 def test_version():
