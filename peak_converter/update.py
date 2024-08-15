@@ -4,18 +4,25 @@ from tempfile import NamedTemporaryFile
 import pendulum
 import requests
 from pathlibutil import Path
+from requests.exceptions import HTTPError
 
 from peak_converter.datetime import Pendulum
 
 
-class HTTPLastModifiedError(requests.exceptions.HTTPError):
+class HTTPLastModifiedError(HTTPError):
     """Missing or invalid timestamp in the Last-Modified header."""
 
     ...
 
 
-class HTTPContentTypeError(requests.exceptions.HTTPError):
+class HTTPContentTypeError(HTTPError):
     """Content-Type is not application/zip."""
+
+    ...
+
+
+class HTTPNotModifiedError(HTTPError):
+    """The file has not been modified since the given time."""
 
     ...
 
@@ -23,13 +30,13 @@ class HTTPContentTypeError(requests.exceptions.HTTPError):
 class UpdateConverter:
     def __init__(
         self,
-        url: str = "https://www.peak-system.com/fileadmin/media/files/PEAK-Converter.zip",
+        url: str,
         time: pendulum.DateTime = None,
-        chunk: int = 8192,
+        chunk_size: int = 8192,
     ):
         self.url = url
         self.time = time
-        self.chunk = chunk
+        self.chunk = chunk_size
         self._tempfile = None
 
     def __repr__(self) -> str:
@@ -82,26 +89,36 @@ class UpdateConverter:
             pass
         else:
             if mtime is False:
-                return None
+                raise HTTPNotModifiedError("File is up to date.")
+
+        return self.download(modified=mtime)
+
+    def download(self, **kwargs) -> Path:
+
+        chunk_size = kwargs.get("chunk_size", self.chunk)
 
         with NamedTemporaryFile(
             delete=False,
-            buffering=self.chunk,
+            buffering=chunk_size,
             suffix=".zip",
         ) as file:
             response = requests.get(self.url, stream=True)
 
             response.raise_for_status()
 
-            for chunk in response.iter_content(chunk_size=self.chunk):
+            for chunk in response.iter_content(chunk_size=chunk_size):
                 file.write(chunk)
 
         self._tempfile = Path(file.name)
-        setattr(self._tempfile, "modified", mtime)
+        setattr(
+            self._tempfile,
+            "modified",
+            kwargs.get("modified", Pendulum(response.headers["Last-Modified"])),
+        )
 
         return self._tempfile
 
-    def __exit__(self, *args):
+    def __exit__(self, *args, **kwargs) -> None:
         try:
             self._tempfile.unlink()
         except (FileNotFoundError, AttributeError):
@@ -111,6 +128,7 @@ class UpdateConverter:
 
 
 def load(file: str) -> dict:
+    """load configuration data from a json file."""
     try:
         file = Path(file).resolve(True)
     except FileNotFoundError:
@@ -120,13 +138,49 @@ def load(file: str) -> dict:
 
 
 def write(data: dict, file: str) -> None:
+    """write configuration data to a json file."""
     file = Path(file)
     file.write_text(json.dumps(data, indent=4))
 
 
-if __name__ == "__main__":
+def update(config: str, destination: Path) -> int:
+    """ "update the PEAK-Converter archive and write the configuration file."""
 
-    with UpdateConverter(time=pendulum.now()) as tempfile:
-        if tempfile is not None:
-            print(tempfile.modified)
-            print(tempfile.hexdigest("sha256"))
+    url = "https://www.peak-system.com/fileadmin/media/files/PEAK-Converter.zip"
+    cfg = load(config)
+
+    try:
+        time = Pendulum(cfg["time"])
+    except KeyError:
+        time = None
+
+    try:
+        with UpdateConverter(url, time=time) as zipfile:
+
+            try:
+                cfg["url"] = url
+                cfg["time"] = str(zipfile.modified)
+                cfg[Path(url).name] = zipfile.hexdigest("sha256")
+                zipfile.unpack_archive(destination)
+            except Exception as e:
+                print(e)
+                return 3
+            else:
+                print(f"unpacked {zipfile=} to {destination=}")
+
+    except HTTPNotModifiedError as e:
+        print(e)
+        return 1
+    except HTTPContentTypeError as e:
+        print(e)
+        return 2
+
+    cfg["files"] = {
+        f.relative_to(destination).as_posix(): f.hexdigest("sha256")
+        for f in destination.glob("PEAK-Converter*")
+        if f.suffix != ".json"
+    }
+
+    write(cfg, config)
+
+    return 0
