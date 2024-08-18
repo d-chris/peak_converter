@@ -40,7 +40,7 @@ class UpdateConverter:
         self._tempfile = None
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__} ({self.url})"
+        return f"{self.__class__.__name__} ('{self.url}')"
 
     def modified(self, time: pendulum.DateTime = None) -> pendulum.DateTime | bool:
         """
@@ -86,12 +86,14 @@ class UpdateConverter:
         except HTTPContentTypeError:
             raise
         except HTTPLastModifiedError:
-            pass
+            kwargs = {}
         else:
             if mtime is False:
                 raise HTTPNotModifiedError("File is up to date.")
 
-        return self.download(modified=mtime)
+            kwargs = {"modified": mtime}
+
+        return self.download(**kwargs)
 
     def download(self, **kwargs) -> Path:
 
