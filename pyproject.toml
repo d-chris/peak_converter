@@ -26,6 +26,9 @@ pytest-random-order = "^1.1.1"
 pytest-mock = "^3.14.0"
 requests-mock = "^1.12.1"
 
+[tool.poetry.group.dev.dependencies]
+tox = "^4.18.0"
+
 [tool.poetry.scripts]
 peak-converter = "peak_converter.converter:main"
 
@@ -48,6 +51,7 @@ addopts = [
   "--random-order",
   "--color=yes",
   "-s",
+  "--cov-append",
   "--cov=peak_converter",
   "--cov-report=term-missing:skip-covered",
   "--cov-report=html",

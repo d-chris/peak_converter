@@ -1,5 +1,6 @@
 import json
 from tempfile import NamedTemporaryFile
+from typing import Union
 
 import pendulum
 import requests
@@ -42,7 +43,9 @@ class UpdateConverter:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__} ('{self.url}')"
 
-    def modified(self, time: pendulum.DateTime = None) -> pendulum.DateTime | bool:
+    def modified(
+        self, time: pendulum.DateTime = None
+    ) -> Union[pendulum.DateTime, bool]:
         """
         Check if the file has type application/zip and has been modified since
         the given time.
@@ -76,7 +79,7 @@ class UpdateConverter:
 
     def __enter__(
         self,
-    ) -> Path | None:
+    ) -> Path:
         """
         download the file if it has been modified since the given time
         """
