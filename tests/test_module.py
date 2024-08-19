@@ -1,6 +1,9 @@
 import subprocess
 
+import pytest
 
+
+@pytest.mark.slow
 def test_version():
 
     result = subprocess.run(
@@ -18,6 +21,7 @@ def test_version():
     assert len(result.stdout.split(".")) == 3
 
 
+@pytest.mark.slow
 def test_converter():
 
     result = subprocess.run(

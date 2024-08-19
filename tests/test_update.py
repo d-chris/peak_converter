@@ -2,6 +2,7 @@ from copy import deepcopy
 
 import pendulum
 import pytest
+import requests
 
 from peak_converter.update import (
     HTTPContentTypeError,
@@ -49,22 +50,6 @@ def mock_get(requests_mock, mock_head):
 
 
 @pytest.fixture(
-    params=[None, HTTPContentTypeError, HTTPLastModifiedError],
-    ids=lambda x: x.__name__ if x else "None",
-)
-def mock_modified(request, mocker):
-
-    error = request.param
-    mocker.patch(
-        "peak_converter.update.UpdateConverter.modified",
-        return_value=pendulum.now(),
-        side_effect=error,
-    )
-
-    return error
-
-
-@pytest.fixture(
     params=[
         False,
         pendulum.now("UTC"),
@@ -73,28 +58,26 @@ def mock_modified(request, mocker):
     ],
     ids=[
         "False",
-        "Now",
+        "pendulum.now('UTC')",
         "HTTPContentTypeError",
         "HTTPLastModifiedError",
     ],
 )
-def mock_modified_error(request, mocker):
+def mock_modified(request, mocker):
 
     value = request.param
 
-    if isinstance(value, Exception):
-        kwargs = {"side_effect": value}
-    else:
+    try:
+        if issubclass(value, requests.exceptions.HTTPError):
+            kwargs = {"side_effect": value}
+        else:
+            raise TypeError(f"Invalid pytest parameter {value=}")
+    except TypeError:
         kwargs = {"return_value": value}
 
     mocker.patch("peak_converter.update.UpdateConverter.modified", **kwargs)
 
-    return isinstance(value, Exception)
-
-
-def test_fubar(mock_modified_error):
-
-    pass
+    return value
 
 
 def test_load_exception(mocker):
